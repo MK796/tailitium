@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
 
           TECHNITIUM_VERSION="$(grep '^FROM technitium/dns-server:' Dockerfile | sed 's#FROM technitium/dns-server:##')"
-          TAILSCALE_VERSION="$(grep '^FROM tailscale/tailscale:' Dockerfile | head -n1 | sed 's#FROM tailscale/tailscale:##' | sed 's# AS tailscale##')"
+          TAILSCALE_VERSION="$(grep '^FROM tailscale/tailscale:' Dockerfile | head -n1 | sed 's#FROM tailscale/tailscale:##' | sed 's# AS tailscale##' | sed 's/^v//')"
 
           echo "technitium=${TECHNITIUM_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tailscale=${TAILSCALE_VERSION}" >> "$GITHUB_OUTPUT"
