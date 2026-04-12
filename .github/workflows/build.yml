@@ -10,6 +10,8 @@ on:
       - main
     tags:
       - "v*"
+    paths-ignore:
+      - "README.md"
 
 permissions:
   contents: write
@@ -214,3 +216,78 @@ jobs:
             --title "${TAG}" \
             --generate-notes \
             --notes-file release-notes.md
+
+      - name: Update README image references
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          COMBO_TAG: ${{ steps.versions.outputs.combo }}
+          NEW_RELEASE_TAG: ${{ steps.semver.outputs.version }}
+          PREVIOUS_RELEASE_TAG: ${{ steps.semver.outputs.previous_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_TAG="${NEW_RELEASE_TAG}"
+          if [ -z "${RELEASE_TAG}" ]; then
+            RELEASE_TAG="${PREVIOUS_RELEASE_TAG}"
+          fi
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          readme = Path("README.md")
+          content = readme.read_text(encoding="utf-8")
+
+          release_tag = os.environ.get("RELEASE_TAG", "").strip()
+          combo_tag = os.environ["COMBO_TAG"].strip()
+
+          if not release_tag:
+              release_tag = "v1.0.0"
+
+          replacement = f"""## Example image references
+
+          Use the newest published image:
+          ```yaml
+          image: ghcr.io/MK796/tailitium:latest
+          ```
+
+          Use a specific release tag:
+          ```yaml
+          image: ghcr.io/MK796/tailitium:{release_tag}
+          ```
+
+          Use an upstream-combination tag:
+          ```yaml
+          image: ghcr.io/MK796/tailitium:{combo_tag}
+          ```
+
+          ## Important notes"""
+
+          pattern = r"## Example image references.*?## Important notes"
+          new_content, count = re.subn(pattern, replacement, content, flags=re.S)
+
+          if count != 1:
+              raise SystemExit("Expected exactly one 'Example image references' section in README.md")
+
+          readme.write_text(new_content, encoding="utf-8")
+          PY
+
+      - name: Commit updated README
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- README.md; then
+            echo "README already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+          git commit -m "Update README image tag examples"
+          git push
