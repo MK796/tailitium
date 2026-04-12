@@ -12,7 +12,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -38,6 +40,27 @@ jobs:
           echo "tailscale=${TAILSCALE_VERSION}" >> "$GITHUB_OUTPUT"
           echo "combo=t${TECHNITIUM_VERSION}-ts${TAILSCALE_VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Calculate next semantic version
+        id: semver
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git fetch --force --tags
+
+          LAST_TAG="$(git tag -l 'v*' --sort=-version:refname | head -n1)"
+
+          if [ -z "$LAST_TAG" ]; then
+            NEXT_TAG="v1.0.0"
+          else
+            VERSION="${LAST_TAG#v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<EOFV
+          $VERSION
+          EOFV
+            PATCH=$((PATCH + 1))
+            NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          echo "version=${NEXT_TAG}" >> "$GITHUB_OUTPUT"
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -46,14 +69,18 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.versions.outputs.combo }},enable={{is_default_branch}}
+            type=raw,value=${{ steps.semver.outputs.version }},enable=${{ steps.semver.outputs.version != '' }}
             type=sha,prefix=sha-
             type=ref,event=tag
           labels: |
             org.opencontainers.image.title=tailitium
             org.opencontainers.image.description=Technitium DNS Server with Tailscale
             org.opencontainers.image.vendor=MK796
-            org.opencontainers.image.version=${{ steps.versions.outputs.combo }}
+            org.opencontainers.image.version=${{ steps.semver.outputs.version != '' && steps.semver.outputs.version || steps.versions.outputs.combo }}
             org.opencontainers.image.source=https://github.com/MK796/tailitium
+            io.tailitium.technitium.version=${{ steps.versions.outputs.technitium }}
+            io.tailitium.tailscale.version=${{ steps.versions.outputs.tailscale }}
+            io.tailitium.combo=${{ steps.versions.outputs.combo }}
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
@@ -83,3 +110,25 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Create Git tag and GitHub release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.semver.outputs.version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping."
+            exit 0
+          fi
+
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes
