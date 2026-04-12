@@ -82,7 +82,7 @@ jobs:
             IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION}"
 
             PREV_TECH="$(git show "${LAST_TAG}:Dockerfile" | grep '^FROM technitium/dns-server:' | sed 's#FROM technitium/dns-server:##' || true)"
-            PREV_TS="$(git show "${LAST_TAG}:Dockerfile" | grep '^FROM tailscale/tailscale:' | head -n1 | sed 's#FROM tailscale/tailscale:##' | sed 's# AS tailscale##' || true)"
+            PREV_TS="$(git show "${LAST_TAG}:Dockerfile" | grep '^FROM tailscale/tailscale:' | head -n1 | sed 's#FROM tailscale/tailscale:##' | sed 's# AS tailscale##' | sed 's/^v//' || true)"
 
             TECH_CHANGED="false"
             TS_CHANGED="false"
