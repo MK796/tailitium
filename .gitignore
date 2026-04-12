@@ -1,0 +1,4 @@
+.DS_Store
+*.log
+tailitium-local.tar
+tailitium-local-docker.tar

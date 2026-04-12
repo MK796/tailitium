@@ -1,0 +1,106 @@
+version: "3.8"
+
+services:
+  dns-server:
+    image: ghcr.io/MK796/tailitium:latest
+    hostname: some-hostname # Optional container hostname.
+
+    environment:
+      - TZ=Europe/Berlin # Set the timezone for the container.
+
+      # -------------------------------------------------------------------------
+      # Technitium DNS Server
+      # -------------------------------------------------------------------------
+      - DNS_SERVER_DOMAIN=ns.example.net # The primary domain name used by this DNS Server to identify itself.
+      - DNS_SERVER_ADMIN_PASSWORD=change-me # DNS web console admin user password.
+      # - DNS_SERVER_ADMIN_PASSWORD_FILE=password.txt # Path to a file that contains the DNS web console admin user password.
+      # - DNS_SERVER_PREFER_IPV6=false # Use IPv6 for querying whenever possible.
+      # - DNS_SERVER_WEB_SERVICE_LOCAL_ADDRESSES=172.17.0.1,127.0.0.1 # Only valid with host network mode.
+      # - DNS_SERVER_WEB_SERVICE_HTTP_PORT=5380 # DNS web console HTTP port.
+      # - DNS_SERVER_WEB_SERVICE_HTTPS_PORT=53443 # DNS web console HTTPS port.
+      # - DNS_SERVER_WEB_SERVICE_ENABLE_HTTPS=false # Enable HTTPS for the DNS web console.
+      # - DNS_SERVER_WEB_SERVICE_USE_SELF_SIGNED_CERT=false # Enable self-signed TLS cert for the DNS web console.
+      # - DNS_SERVER_WEB_SERVICE_TLS_CERTIFICATE_PATH=/etc/dns/tls/cert.pfx # Path to UI TLS certificate.
+      # - DNS_SERVER_WEB_SERVICE_TLS_CERTIFICATE_PASSWORD=password # Password for UI TLS certificate.
+      # - DNS_SERVER_WEB_SERVICE_HTTP_TO_TLS_REDIRECT=false # Redirect UI HTTP to HTTPS.
+      # - DNS_SERVER_OPTIONAL_PROTOCOL_DNS_OVER_HTTP=false # Enable DoH on TCP 8053 behind a TLS terminator.
+      # - DNS_SERVER_RECURSION=AllowOnlyForPrivateNetworks # Allow, Deny, AllowOnlyForPrivateNetworks, UseSpecifiedNetworkACL.
+      # - DNS_SERVER_RECURSION_NETWORK_ACL=192.168.10.0/24,!192.168.10.2 # Network ACL for recursion when using UseSpecifiedNetworkACL.
+      # - DNS_SERVER_RECURSION_DENIED_NETWORKS=1.1.1.0/24 # Obsolete. Prefer DNS_SERVER_RECURSION_NETWORK_ACL.
+      # - DNS_SERVER_RECURSION_ALLOWED_NETWORKS=127.0.0.1,192.168.1.0/24 # Obsolete. Prefer DNS_SERVER_RECURSION_NETWORK_ACL.
+      # - DNS_SERVER_ENABLE_BLOCKING=false # Enable Technitium blocking features.
+      # - DNS_SERVER_ALLOW_TXT_BLOCKING_REPORT=false # Return TXT blocking reports for TXT requests.
+      # - DNS_SERVER_BLOCK_LIST_URLS= # Comma-separated block list URLs.
+      # - DNS_SERVER_FORWARDERS=1.1.1.1,8.8.8.8 # Comma-separated forwarders.
+      # - DNS_SERVER_FORWARDER_PROTOCOL=Tcp # Udp, Tcp, Tls, Https, HttpsJson.
+      - DNS_SERVER_LOG_USING_LOCAL_TIME=true # Use local time instead of UTC for logging.
+
+      # -------------------------------------------------------------------------
+      # Tailscale
+      # -------------------------------------------------------------------------
+      - TS_AUTHKEY=some-auth-key # Tailscale auth key.
+      - TS_AUTH_ONCE=true # Use the auth key only when not already logged in.
+      - TS_STATE_DIR=/var/lib/tailscale # Persist Tailscale node state here.
+      - TS_USERSPACE=false # false = TUN mode, true = userspace networking.
+      - TS_ACCEPT_DNS=false # Do not let Tailscale override DNS settings inside the container.
+      - TS_HOSTNAME=ns.example.net # Keep Tailscale hostname aligned with DNS_SERVER_DOMAIN.
+      - TS_EXPECTED_TAILNET_IP4=100.64.53.53 # Optional strict IP check.
+      # - TS_LOGIN_SERVER=https://controlplane.tailscale.com # Optional custom control server.
+      # - TS_EXTRA_ARGS=--advertise-tags=tag:dns # Optional extra tailscale up args.
+      # - TS_TAILSCALED_EXTRA_ARGS= # Optional extra tailscaled args.
+
+    volumes:
+      - dns_config_data:/etc/dns # Technitium config and zone data.
+      - tailscale_state_data:/var/lib/tailscale # Tailscale state.
+      - /dev/net/tun:/dev/net/tun # Required for TUN mode.
+      # - /etc/letsencrypt/live/example.net:/etc/dns/certificates:ro # Optional TLS material.
+
+    cap_add:
+      - NET_ADMIN
+
+    ports:
+      - target: 5380
+        published: 6480
+        protocol: tcp
+        mode: ingress
+      - target: 53443
+        published: 64443
+        protocol: tcp
+        mode: ingress
+
+      # Optional DNS-related publications.
+      # - target: 53
+      #   published: 53
+      #   protocol: udp
+      #   mode: host
+      # - target: 53
+      #   published: 53
+      #   protocol: tcp
+      #   mode: host
+      # - target: 853
+      #   published: 853
+      #   protocol: tcp
+      #   mode: host
+      # - target: 8053
+      #   published: 8053
+      #   protocol: tcp
+      #   mode: host
+      # - target: 67
+      #   published: 67
+      #   protocol: udp
+      #   mode: host
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.platform.os == linux
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 0
+
+volumes:
+  dns_config_data:
+  tailscale_state_data:
