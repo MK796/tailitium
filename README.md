@@ -263,19 +263,16 @@ This is the most advanced and easiest pattern to misconfigure.
 ## Example image references
 
 Use the newest published image:
-
 ```yaml
 image: ghcr.io/MK796/tailitium:latest
 ```
 
 Use a specific release tag:
-
 ```yaml
 image: ghcr.io/MK796/tailitium:v1.0.0
 ```
 
 Use an upstream-combination tag:
-
 ```yaml
 image: ghcr.io/MK796/tailitium:t14.3.0-ts1.96.5
 ```
