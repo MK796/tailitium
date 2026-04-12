@@ -1,73 +1,149 @@
-name: Build and publish tailitium
+name: Build, publish and release tailitium
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
-    tags:
-      - "v*"
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all tags
+        run: git fetch --force --tags
+
+      - name: Determine upstream versions and next release
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CUR_TECH="$(grep '^FROM technitium/dns-server:' Dockerfile | sed 's#FROM technitium/dns-server:##')"
+          CUR_TAIL="$(grep '^FROM tailscale/tailscale:' Dockerfile | head -n1 | sed 's#FROM tailscale/tailscale:##' | sed 's# AS tailscale##')"
+          CUR_COMBO="t${CUR_TECH}-ts${CUR_TAIL}"
+
+          echo "technitium=${CUR_TECH}" >> "$GITHUB_OUTPUT"
+          echo "tailscale=${CUR_TAIL}" >> "$GITHUB_OUTPUT"
+          echo "combo=${CUR_COMBO}" >> "$GITHUB_OUTPUT"
+
+          LAST_TAG="$(git tag --list 'v*' --sort=-version:refname | head -n1 || true)"
+
+          if [ -z "${LAST_TAG}" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=v1.0.0" >> "$GITHUB_OUTPUT"
+            {
+              echo "release_notes<<EOF"
+              echo "Initial tailitium release"
+              echo
+              echo "Technitium: ${CUR_TECH}"
+              echo "Tailscale: ${CUR_TAIL}"
+              echo "Combined image tag: ${CUR_COMBO}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PREV_DOCKERFILE="$(git show "${LAST_TAG}:Dockerfile" 2>/dev/null || true)"
+
+          PREV_TECH="$(printf '%s\n' "$PREV_DOCKERFILE" | grep '^FROM technitium/dns-server:' | sed 's#FROM technitium/dns-server:##' || true)"
+          PREV_TAIL="$(printf '%s\n' "$PREV_DOCKERFILE" | grep '^FROM tailscale/tailscale:' | head -n1 | sed 's#FROM tailscale/tailscale:##' | sed 's# AS tailscale##' || true)"
+
+          TECH_CHANGED=false
+          TAIL_CHANGED=false
+
+          [ "${CUR_TECH}" != "${PREV_TECH}" ] && TECH_CHANGED=true
+          [ "${CUR_TAIL}" != "${PREV_TAIL}" ] && TAIL_CHANGED=true
+
+          if [ "${TECH_CHANGED}" = false ] && [ "${TAIL_CHANGED}" = false ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          VERSION="${LAST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          if [ "${TECH_CHANGED}" = true ] && [ "${TAIL_CHANGED}" = true ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${NEW_TAG}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "release_notes<<EOF"
+            echo "Automated tailitium release"
+            echo
+            echo "Previous release: ${LAST_TAG}"
+            echo "New release: ${NEW_TAG}"
+            echo
+            echo "Technitium: ${PREV_TECH} -> ${CUR_TECH}"
+            echo "Tailscale: ${PREV_TAIL} -> ${CUR_TAIL}"
+            echo "Combined image tag: ${CUR_COMBO}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract upstream versions
-        id: versions
-        run: |
-          TECHNITIUM_VERSION="$(grep '^FROM technitium/dns-server:' Dockerfile | sed 's#FROM technitium/dns-server:##')"
-          TAILSCALE_VERSION="$(grep '^FROM tailscale/tailscale:' Dockerfile | head -n1 | sed 's#FROM tailscale/tailscale:##' | sed 's# AS tailscale##')"
-          echo "technitium=${TECHNITIUM_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tailscale=${TAILSCALE_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "combo=t${TECHNITIUM_VERSION}-ts${TAILSCALE_VERSION}" >> "$GITHUB_OUTPUT"
-
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/mk796/tailitium
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.versions.outputs.combo }},enable={{is_default_branch}}
+            type=raw,value=latest
+            type=raw,value=${{ steps.versions.outputs.combo }}
             type=sha,prefix=sha-
-            type=ref,event=tag
+            type=raw,value=${{ steps.versions.outputs.release_tag }},enable=${{ steps.versions.outputs.should_release == 'true' }}
           labels: |
             org.opencontainers.image.title=tailitium
             org.opencontainers.image.description=Technitium DNS Server with Tailscale
             org.opencontainers.image.vendor=MK796
-            org.opencontainers.image.version=${{ steps.versions.outputs.combo }}
             org.opencontainers.image.source=https://github.com/MK796/tailitium
+            org.opencontainers.image.version=${{ steps.versions.outputs.release_tag }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Build and push image
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Create GitHub release
+        if: steps.versions.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.versions.outputs.release_tag }}" \
+            --target "${GITHUB_SHA}" \
+            --title "${{ steps.versions.outputs.release_tag }}" \
+            --notes "${{ steps.versions.outputs.release_notes }}"
