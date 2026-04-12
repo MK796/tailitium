@@ -71,14 +71,14 @@ jobs:
 
             NOTES=$(
               cat <<EOF
-Upstream changes
+              Upstream changes
 
-- Technitium: none -> ${CURRENT_TECH}
-- Tailscale: none -> ${CURRENT_TS}
+              - Technitium: none -> ${CURRENT_TECH}
+              - Tailscale: none -> ${CURRENT_TS}
 
-Release logic
-- Initial release created automatically.
-EOF
+              Release logic
+              - Initial release created automatically.
+              EOF
             )
           else
             VERSION="${LAST_TAG#v}"
@@ -112,15 +112,15 @@ EOF
 
             NOTES=$(
               cat <<EOF
-Upstream changes
+              Upstream changes
 
-- Technitium: ${PREV_TECH} -> ${CURRENT_TECH}
-- Tailscale: ${PREV_TS} -> ${CURRENT_TS}
+              - Technitium: ${PREV_TECH} -> ${CURRENT_TECH}
+              - Tailscale: ${PREV_TS} -> ${CURRENT_TS}
 
-Release logic
-- ${CHANGE_KIND}
-- Previous release tag: ${LAST_TAG}
-EOF
+              Release logic
+              - ${CHANGE_KIND}
+              - Previous release tag: ${LAST_TAG}
+              EOF
             )
           fi
 
@@ -141,7 +141,7 @@ EOF
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.semver.outputs.release_needed == 'true'
         shell: bash
         run: |
-          cat > release-notes.md <<'EOF'
+          cat > release-notes.md <<EOF
           ${{ steps.semver.outputs.notes }}
           EOF
 
