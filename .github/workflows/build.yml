@@ -231,6 +231,7 @@ jobs:
           if [ -z "${RELEASE_TAG}" ]; then
             RELEASE_TAG="${PREVIOUS_RELEASE_TAG}"
           fi
+          export RELEASE_TAG
 
           python3 - <<'PY'
           from pathlib import Path
