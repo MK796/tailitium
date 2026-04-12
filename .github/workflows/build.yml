@@ -69,17 +69,14 @@ jobs:
             RELEASE_NEEDED="true"
             VERSION_LABEL="${NEXT_TAG}"
 
-            NOTES=$(
-              cat <<EOF
-              Upstream changes
-
-              - Technitium: none -> ${CURRENT_TECH}
-              - Tailscale: none -> ${CURRENT_TS}
-
-              Release logic
-              - Initial release created automatically.
-              EOF
-            )
+            NOTES="$(printf '%s\n' \
+              "Upstream changes" \
+              "" \
+              "- Technitium: none -> ${CURRENT_TECH}" \
+              "- Tailscale: none -> ${CURRENT_TS}" \
+              "" \
+              "Release logic" \
+              "- Initial release created automatically.")"
           else
             VERSION="${LAST_TAG#v}"
             IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION}"
@@ -110,18 +107,15 @@ jobs:
               CHANGE_KIND="No upstream image changed -> no new semantic release"
             fi
 
-            NOTES=$(
-              cat <<EOF
-              Upstream changes
-
-              - Technitium: ${PREV_TECH} -> ${CURRENT_TECH}
-              - Tailscale: ${PREV_TS} -> ${CURRENT_TS}
-
-              Release logic
-              - ${CHANGE_KIND}
-              - Previous release tag: ${LAST_TAG}
-              EOF
-            )
+            NOTES="$(printf '%s\n' \
+              "Upstream changes" \
+              "" \
+              "- Technitium: ${PREV_TECH} -> ${CURRENT_TECH}" \
+              "- Tailscale: ${PREV_TS} -> ${CURRENT_TS}" \
+              "" \
+              "Release logic" \
+              "- ${CHANGE_KIND}" \
+              "- Previous release tag: ${LAST_TAG}")"
           fi
 
           echo "previous_tag=${LAST_TAG}" >> "$GITHUB_OUTPUT"
@@ -133,17 +127,17 @@ jobs:
 
           {
             echo "notes<<EOF"
-            echo "${NOTES}"
+            printf '%s\n' "${NOTES}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Write release notes to file
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.semver.outputs.release_needed == 'true'
+        env:
+          RELEASE_NOTES: ${{ steps.semver.outputs.notes }}
         shell: bash
         run: |
-          cat > release-notes.md <<EOF
-          ${{ steps.semver.outputs.notes }}
-          EOF
+          printf '%s\n' "$RELEASE_NOTES" > release-notes.md
 
       - name: Extract Docker metadata
         id: meta
@@ -160,7 +154,7 @@ jobs:
             org.opencontainers.image.title=tailitium
             org.opencontainers.image.description=Technitium DNS Server with Tailscale
             org.opencontainers.image.vendor=MK796
-            org.opencontainers.image.version=${{ steps.semver.outputs.version_label || steps.versions.outputs.combo }}
+            org.opencontainers.image.version=${{ steps.semver.outputs.version_label }}
             org.opencontainers.image.source=https://github.com/MK796/tailitium
             io.tailitium.technitium.version=${{ steps.versions.outputs.technitium }}
             io.tailitium.tailscale.version=${{ steps.versions.outputs.tailscale }}
