@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Technitium DNS Server upstream
+    url: https://github.com/TechnitiumSoftware/DnsServer/issues
+    about: Use this for Technitium DNS Server bugs, DNS behavior, DNSSEC, zone handling, API behavior, recursion, authoritative DNS, or web UI issues not caused by tailitium packaging.
+  - name: Tailscale documentation
+    url: https://tailscale.com/docs
+    about: Use this for general Tailscale setup, ACLs, auth flows, subnet routers, exit nodes, policy design, and routing questions beyond this image's packaging.
+  - name: Security policy
+    url: https://github.com/MK796/tailitium/security/policy
+    about: Report vulnerabilities privately instead of opening a public issue.
