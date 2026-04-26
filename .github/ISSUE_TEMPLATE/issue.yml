@@ -1,0 +1,120 @@
+name: Issue
+description: Report a tailitium packaging, build, runtime, documentation, or release workflow issue
+title: "[Issue]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue.
+
+        Please use this template only for issues that belong to `tailitium` itself: Docker image packaging, entrypoint behavior, Tailscale binary integration, GitHub Actions, releases, tags, or documentation for this combined image.
+
+        For pure Technitium DNS Server behavior, please use the Technitium upstream project. For pure Tailscale behavior, ACLs, auth flows, subnet routing design, or account policy, please use the Tailscale documentation/support channels.
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue type
+      description: What part of this repository does the issue affect?
+      options:
+        - Docker image build or packaging
+        - Entrypoint or container startup behavior
+        - Tailscale binary integration in this image
+        - Tailscale-related container configuration
+        - GitHub Actions, releases, tags, or README automation
+        - Documentation
+        - Other, but still within tailitium scope
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the issue.
+      placeholder: What happened, and why do you think it belongs to tailitium?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope_check
+    attributes:
+      label: Scope check
+      description: Confirm why this belongs in this repository.
+      options:
+        - This is about tailitium packaging, startup behavior, release automation, or documentation.
+        - I am not sure, but I can explain why I think tailitium may be involved.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reproducible example you can.
+      placeholder: |
+        1. Deploy image ...
+        2. Set environment variable ...
+        3. Start container/service ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Please provide the relevant environment details.
+      placeholder: |
+        - tailitium image tag:
+        - architecture: amd64 / arm64 / arm/v7
+        - runtime: Docker standalone / Docker Compose / Docker Swarm / other
+        - host OS:
+        - Docker version:
+        - TS_USERSPACE:
+        - TS_STATE_DIR persistent volume used: yes/no
+        - relevant TS_EXTRA_ARGS:
+        - Technitium version shown by the container:
+        - Tailscale version shown by the container:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or configuration
+      description: Remove secrets before posting. Do not paste TS_AUTHKEY values, TSIG keys, tokens, private keys, private credentials, or sensitive DNS data.
+      render: shell
+      placeholder: Paste relevant logs, compose snippets, stack snippets, or command output here.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked existing issues and releases before opening this issue.
+          required: true
+        - label: This is not a pure Technitium DNS Server feature request or DNS behavior bug.
+          required: true
+        - label: This is not a pure Tailscale ACL, account, routing-policy, or auth-flow question.
+          required: true
+        - label: I removed secrets, auth keys, TSIG keys, tokens, private keys, and sensitive private infrastructure details.
+          required: true
