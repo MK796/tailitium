@@ -4,7 +4,7 @@ updates:
     directory: "/"
     schedule:
       interval: "cron"
-      cronjob: "17 */6 * * *"
+      cronjob: "17 6 * * *"
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 10
     groups:
@@ -22,7 +22,7 @@ updates:
     directory: "/"
     schedule:
       interval: "cron"
-      cronjob: "43 */12 * * *"
+      cronjob: "43 6 * * *"
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 10
     groups:
