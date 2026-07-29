@@ -1,4 +1,4 @@
-FROM tailscale/tailscale:v1.98.9 AS tailscale
+FROM tailscale/tailscale:v1.98.10 AS tailscale
 FROM technitium/dns-server:15.4.0
 
 USER root
