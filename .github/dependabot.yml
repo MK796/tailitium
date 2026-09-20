@@ -6,6 +6,10 @@ updates:
       interval: "cron"
       cronjob: "17 6 * * *"
       timezone: "Europe/Berlin"
+    cooldown:
+      exclude:
+        - "technitium/dns-server"
+        - "tailscale/tailscale"
     open-pull-requests-limit: 10
     groups:
       tailitium-upstream-images:
