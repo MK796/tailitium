@@ -269,12 +269,12 @@ image: ghcr.io/MK796/tailitium:latest
 
 Use a specific release tag:
 ```yaml
-image: ghcr.io/MK796/tailitium:v1.0.20
+image: ghcr.io/MK796/tailitium:v1.0.21
 ```
 
 Use an upstream-combination tag:
 ```yaml
-image: ghcr.io/MK796/tailitium:t15.6.0-ts1.102.5
+image: ghcr.io/MK796/tailitium:t15.6.1-ts1.102.5
 ```
 
 ## Important notes
